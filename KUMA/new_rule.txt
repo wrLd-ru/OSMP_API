@@ -1,0 +1,34 @@
+{
+"tenantID": "=TenantID=",
+"tenantName": "=TenantName=",
+"kind": "correlationRule",
+"name": "4RAYS_WIN_MaliciousVipNetUpdate_rule",
+"description": "Malicious VipNet update package contains malware sample disguised as msinfo32.exe sample so that attacker can execute search order exe hijack and run arbitrary code\nStatus: experimental\nAuthor: SOLAR 4RAYSRefs:\n * \nModified: 2025-04-14\nFalse positives:\n * no known false-positives",
+"payload": {
+"name": "4RAYS_WIN_MaliciousVipNetUpdate_rule",
+"kind": "simple",
+"selectors": [
+{
+"filter": {
+"id": "",
+"name": "4RAYS_WIN_MaliciousVipNetUpdate_rule",
+"code": "DeviceVendor='Microsoft' AND DeviceProduct='Windows' AND (DeviceEventClassID = [1, 4688]) AND SourceProcessName endsWith 'lumpdiag.exe' AND DestinationProcessName endsWith 'msinfo32.exe' AND NOT (DestinationProcessName startsWith 'c:\\\\windows\\\\system32' OR DestinationProcessName startsWith 'c:\\\\windows\\\\syswow64' OR DestinationProcessName startsWith 'c:\\\\windows\\\\winsxs')"
+}
+}
+],
+"identicalFields": [
+"DeviceEventClassID",
+"SourceProcessName",
+"DestinationProcessName"
+],
+"uniqueFields": [],
+"priority": 1,
+"actions": {
+"onEveryEvent": {
+"activeLists": [],
+"enrichment": [],
+"categorization": []
+}
+}
+}
+}
