@@ -14,13 +14,13 @@ def main():
     parser_create = subparsers.add_parser("get_tenants", help="Returns the list of tenants")
 
     # Парсер для создания ресурса
-    parser_create = subparsers.add_parser("get_alerts", help="Returns a list of alerts for the specified tenants")
-    parser_create.add_argument("--id", required=False, help="")
-    parser_create.add_argument("--tenantID", required=True, help="")
+    parser_create = subparsers.add_parser("get_alerts", help="Возвращает список алертов для определенного тенанта")
+    parser_create.add_argument("--id", required=False, help="Идентификатор алерта")
+    parser_create.add_argument("--tenantID", required=True, help="Идентификатор тенанта. Обязательный параметр")
     parser_create.add_argument("--start", required=False, help="Начало временного интервала, используемого для фильтрации списка алертов. Формат: 2025-05-14T00:00:00Z")
     parser_create.add_argument("--end", required=False, help='Конец временного интервала, используемого для фильтрации списка алертов. Формат: 2025-05-14T00:00:00Z')
-    parser_create.add_argument("--status", required=False, help='')
-    parser_create.add_argument("-o", "--output", required=False, help="Save output to a file")
+    parser_create.add_argument("--status", required=False, help='Статус алерта. Допустимые значения: new, inProgress, inIncident, closed')
+    parser_create.add_argument("-o", "--output", required=False, help="Сохранять вывод в файл")
 
     args = parser.parse_args()
 
