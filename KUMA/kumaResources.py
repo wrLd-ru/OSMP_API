@@ -4,7 +4,6 @@ import argparse
 import sys
 
 def action_update_collectors(kuma, name, kind, id):
-    #kuma = Kuma(address='10.0.1.3', port='7223', token='d9cca4f49267a52c88df760b8f1bc31a')
 
     page = 1
     name = name
@@ -239,24 +238,8 @@ def action_create_collectors(kuma, id, kind, name):
     original_list = kuma.get_tenants()
 
     tenants_mapping = {
-        'Восточно-Сибирская ж.д.': 'ESRR',
-        'Горьковская ж.д.': 'GRW',
-        'Дальневосточная ж.д.':'DVGD',
-        'Железные дороги Новороссии':'ZDN',
-        'Забайкальская ж.д.':'ZRW',
-        'Западно-Сибирская ж.д.':'WSR',
-        'Калининградская ж.д.':'KLGD',
-        'Красноярская ж.д.':'KRW',
-        'Куйбышевская ж.д.':'KBSH',
-        'Московская ж.д.':'MSK',
-        'Октябрьская ж.д.':'ORW',
-        'Приволжская ж.д.':'PVRR',
-        'Свердловская ж.д.':'SVRW',
-        'Северная ж.д.':'NRR',
-        'Северо-Кавказская ж.д.':'SKZD',
-        'Центр':'GVC',
-        'Юго-Восточная ж.д.':'SERW',
-        'Южно-Уральская ж.д.':'SURW',
+        'tenant1Fullname': 'shortname1',
+        'tenant2Fullname': 'shortname2'
     }
 
     target_tenants = [
@@ -313,6 +296,7 @@ def main():
     parser_update.add_argument("--name", required=True, help="Имя коллектора")
     parser_update.add_argument("--kind", required=True, help="Тип ресурса")
 
+    # Парсер для получения ресурса
     parser_update = subparsers.add_parser("get_resource", help="Получение ресурса")
     parser_update.add_argument("--id_resource", required=True, help="ID ресурса")
     parser_update.add_argument("--kind", required=True, help="Тип ресурса")
@@ -327,6 +311,7 @@ def main():
         print(f"\n[START] Запуск массового создания коллекторов по всем тенантам по примеру...\n")
         action_create_collectors(kuma, args.id, args.kind, args.name)
     elif args.command == "update_collectors":
+        print(f"\n[START] Запуск обновления коллекторов...\n")
         action_update_collectors(kuma, args.name, args.kind, args.id_normalizer)
     elif args.command == "create_resource":
         if args.resource.startswith('@'):
@@ -343,6 +328,7 @@ def main():
         else:
             action_create_resource(kuma, args.kind, args.tenantID, args.tenantName, args.resource)
     elif args.command == "get_resource":
+        print(f"\n[START] Запуск получения ресурса с типом {args.kind}...\n")
         print(kuma.get_kind_resources(args.kind, args.id_resource))
     else:
         parser.print_help()
