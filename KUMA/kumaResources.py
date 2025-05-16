@@ -313,10 +313,14 @@ def main():
     parser_update.add_argument("--name", required=True, help="Имя коллектора")
     parser_update.add_argument("--kind", required=True, help="Тип ресурса")
 
+    parser_update = subparsers.add_parser("get_resource", help="Получение ресурса")
+    parser_update.add_argument("--id_resource", required=True, help="ID ресурса")
+    parser_update.add_argument("--kind", required=True, help="Тип ресурса")
+
     args = parser.parse_args()
 
     # Здесь необходимо ввести корректные данные !
-    kuma = Kuma(address='10.0.1.3', port='7223', token='d9cca4f49267a52c88df760b8f1bc31a')
+    kuma = Kuma(address='ip', port='7223', token='')
 
     # Выбираем действие на основе переданной команды
     if args.command == "create_collectors":
@@ -336,6 +340,10 @@ def main():
                 sys.exit(f"Ошибка парсинга JSON: {str(e)}")
             except Exception as e:
                 sys.exit(f"Ошибка чтения файла: {str(e)}")
+        else:
+            action_create_resource(kuma, args.kind, args.tenantID, args.tenantName, args.resource)
+    elif args.command == "get_resource":
+        print(kuma.get_kind_resources(args.kind, args.id_resource))
     else:
         parser.print_help()
 
