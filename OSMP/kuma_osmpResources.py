@@ -1,9 +1,9 @@
-from kumaPublicApiV3 import Kuma
+from OSMP.kuma_osmpPublicApiV3 import Kuma
 import json
 import argparse
 import sys
 
-def action_update_collectors(kuma, name, kind, id):
+def action_update_collectors(kuma_osmp, name, kind, id):
 
     page = 1
     name = name
@@ -14,7 +14,7 @@ def action_update_collectors(kuma, name, kind, id):
     # ------------------ поиск коллекторов по названию
     print("\n")
     print(f"[INFO] Запуск поиска ресурсов с типом {kind_collector} по названию {name}...\n")
-    collectors_list = kuma.resources_search(page=page, name=name, kind=kind_collector)
+    collectors_list = kuma_osmp.resources_search(page=page, name=name, kind=kind_collector)
     #print(collectors_list)
 
     collectors_filtered = [
@@ -39,7 +39,7 @@ def action_update_collectors(kuma, name, kind, id):
 
     # ----------------- получение и изменение ресурса нормализатор
     def get_filtered_normalizer(kind, id):
-        normalizer = kuma.get_kind_resources(kind, id)
+        normalizer = kuma_osmp.get_kind_resources(kind, id)
 
         modified_normalizer = normalizer.copy()
 
@@ -54,7 +54,7 @@ def action_update_collectors(kuma, name, kind, id):
 
     # ---------------- получение и изменение ресурса коллектора
     def get_and_modified_collector(kind_collector, id_collector, id_normalizer):
-        resource = kuma.get_kind_resources(kind_collector, id_collector)
+        resource = kuma_osmp.get_kind_resources(kind_collector, id_collector)
 
         modified_data = resource.copy()
 
@@ -118,7 +118,7 @@ def action_update_collectors(kuma, name, kind, id):
             collector_new = get_and_modified_collector(current_kind, current_id, id_normalizer)
             print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
             print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
-            answer = kuma.resources_validate(current_kind, collector_new)
+            answer = kuma_osmp.resources_validate(current_kind, collector_new)
             print(f"Получен ответ: {answer}\n")
 
     def validate_and_update_collectors_with_new_normalizers(collectors_filtered, id_normalizer):
@@ -128,15 +128,15 @@ def action_update_collectors(kuma, name, kind, id):
             collector_new = get_and_modified_collector(current_kind, current_id, id_normalizer)
             print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
             print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
-            answer = kuma.resources_validate(current_kind, collector_new)
+            answer = kuma_osmp.resources_validate(current_kind, collector_new)
             print(f"Получен ответ: {answer}\n")
             if answer == '[Status 204: OK] Resource is valid!':
                 print(f"[INFO] Запуск обновления ресурса {collector_new['name']}...")
-                answer = kuma.put_kind_resources(current_kind, current_id, collector_new)
+                answer = kuma_osmp.put_kind_resources(current_kind, current_id, collector_new)
                 print(f"Получен ответ: {answer}\n")
 
 
-    new_normalizer = kuma.get_kind_resources('normalizer', id_normalizer)
+    new_normalizer = kuma_osmp.get_kind_resources('normalizer', id_normalizer)
     print("\n")
     print(f"[INFO] Валидация нормализатора {new_normalizer['name']} на всех коллекторах...\n")
     validate_collectors_with_new_normalizers(collectors_filtered, id_normalizer)
@@ -144,9 +144,9 @@ def action_update_collectors(kuma, name, kind, id):
     print(f"[INFO] Валидация и изменение нормализатора {new_normalizer['name']} на всех коллекторах...\n")
     validate_and_update_collectors_with_new_normalizers(collectors_filtered, id_normalizer)
 
-def action_create_collectors(kuma, id, kind, name):
+def action_create_collectors(kuma_osmp, id, kind, name):
     def get_filtered_normalizer(kind, id):
-        normalizer = kuma.get_kind_resources(kind, id)
+        normalizer = kuma_osmp.get_kind_resources(kind, id)
 
         modified_normalizer = normalizer.copy()
 
@@ -160,7 +160,7 @@ def action_create_collectors(kuma, id, kind, name):
         return filtered_normalizer
     
     def get_and_filtered_example_collector(kind_collector, id_collector):
-        resource = kuma.get_kind_resources(kind_collector, id_collector)
+        resource = kuma_osmp.get_kind_resources(kind_collector, id_collector)
 
         modified_data = resource.copy()
         
@@ -226,16 +226,16 @@ def action_create_collectors(kuma, id, kind, name):
         current_tenant = tenant_name
         print(f"[INFO] Создается новый коллектор {collector_new['name']} в тенанте {current_tenant}")
         print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
-        answer = kuma.resources_validate(current_kind, collector_new)
+        answer = kuma_osmp.resources_validate(current_kind, collector_new)
         print(f"Получен ответ: {answer}\n")
 #        if answer == '[Status 204: OK] Resource is valid!':
 #            print(f"[INFO] Запуск обновления ресурса {collector_new['name']}...")
-#            answer = kuma.resources_create(current_kind, collector_new)
+#            answer = kuma_osmp.resources_create(current_kind, collector_new)
 #            print(f"Получен ответ: {answer}\n")
     
     collector = get_and_filtered_example_collector(kind, id)
     
-    original_list = kuma.get_tenants()
+    original_list = kuma_osmp.get_tenants()
 
     tenants_mapping = {
         'tenant1Fullname': 'shortname1',
@@ -259,20 +259,20 @@ def action_create_collectors(kuma, id, kind, name):
         tenant_name = f'{tenant['tenantName']}'
         validate_and_create_new_collectors(collector, tenant_name)
    
-def action_create_resource(kuma, kind, tenantID, tenantName, resource):
+def action_create_resource(kuma_osmp, kind, tenantID, tenantName, resource):
     resource['tenantID'] = tenantID
     resource['tenantName'] = tenantName
     print(f"[INFO] Запуск валидации ресурса {resource['name']}...")
-    answer = kuma.resources_validate(kind, resource)
+    answer = kuma_osmp.resources_validate(kind, resource)
     print(f"Получен ответ: {answer}\n")
     if answer == '[Status 204: OK] Resource is valid!':
         print(f"[INFO] Запуск обновления ресурса {resource['name']}...")
-        answer = kuma.resources_create(kind, resource)
+        answer = kuma_osmp.resources_create(kind, resource)
         print(f"Получен ответ: {answer}\n")
 
 def main():
-    parser = argparse.ArgumentParser(description="Скрипт для управления ресурсами KUMA. " \
-    "Перед началом использования необходимо ввести в секцию Main в переменную kuma адрес Ядра и API токен!")
+    parser = argparse.ArgumentParser(description="Скрипт для управления ресурсами kuma_osmp. " \
+    "Перед началом использования необходимо ввести в секцию Main в переменную kuma_osmp адрес Ядра и API токен!")
     
     # Добавляем возможные действия
     subparsers = parser.add_subparsers(dest="command", help="Доступные команды")
@@ -303,17 +303,17 @@ def main():
 
     args = parser.parse_args()
 
-    # Здесь необходимо ввести корректные данные ! Для KUMA Standalone
-    kuma = Kuma(address='ip', port='7223', token='')
+    # Здесь необходимо ввести корректные данные ! Для KUMA в XDR OSMP
+    kuma_osmp = Kuma(xdrdomain='xdr.soc-lab.local', token='')
  
 
     # Выбираем действие на основе переданной команды
     if args.command == "create_collectors":
         print(f"\n[START] Запуск массового создания коллекторов по всем тенантам по примеру...\n")
-        action_create_collectors(kuma, args.id, args.kind, args.name)
+        action_create_collectors(kuma_osmp, args.id, args.kind, args.name)
     elif args.command == "update_collectors":
         print(f"\n[START] Запуск обновления коллекторов...\n")
-        action_update_collectors(kuma, args.name, args.kind, args.id_normalizer)
+        action_update_collectors(kuma_osmp, args.name, args.kind, args.id_normalizer)
     elif args.command == "create_resource":
         if args.resource.startswith('@'):
             file_path = args.resource[1:]
@@ -321,16 +321,16 @@ def main():
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
                     args.resource = json.loads(content)  # Парсим JSON в объект
-                    action_create_resource(kuma, args.kind, args.tenantID, args.tenantName, args.resource)
+                    action_create_resource(kuma_osmp, args.kind, args.tenantID, args.tenantName, args.resource)
             except json.JSONDecodeError as e:
                 sys.exit(f"Ошибка парсинга JSON: {str(e)}")
             except Exception as e:
                 sys.exit(f"Ошибка чтения файла: {str(e)}")
         else:
-            action_create_resource(kuma, args.kind, args.tenantID, args.tenantName, args.resource)
+            action_create_resource(kuma_osmp, args.kind, args.tenantID, args.tenantName, args.resource)
     elif args.command == "get_resource":
         print(f"\n[START] Запуск получения ресурса с типом {args.kind}...\n")
-        print(kuma.get_kind_resources(args.kind, args.id_resource))
+        print(kuma_osmp.get_kind_resources(args.kind, args.id_resource))
     else:
         parser.print_help()
 
