@@ -6,17 +6,16 @@ requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.
 
 class Kuma:
 
-    def __init__(self, address, port, token):
+    def __init__(self, xdrdomain, token):
         self.session = requests.Session()
         self.session.verify = False
-        self.address = address
-        self.port = port
+        self.xdrdomain = xdrdomain
         self.token = token
         self.headers = {'Authorization': 'Bearer ' + token}
         self.session.headers.update(self.headers)
 
     def _make_request(self, method, route, params=None, data=None, files=None, resp_status_code_expected=200, response_type='json'):
-        url = 'https://api.{}}/xdr/api/v3/kuma/{}'.format(self.xdrdomain, route)
+        url = 'https://api.{}/xdr/api/v3/kuma/{}'.format(self.xdrdomain, route)
 
         response = self.session.request(
             method, url,

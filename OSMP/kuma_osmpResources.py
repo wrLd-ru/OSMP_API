@@ -1,4 +1,4 @@
-from OSMP.kuma_osmpPublicApiV3 import Kuma
+from kuma_osmpPublicApiV3 import Kuma
 import json
 import argparse
 import sys
@@ -300,6 +300,7 @@ def main():
     parser_update = subparsers.add_parser("get_resource", help="Получение ресурса")
     parser_update.add_argument("--id_resource", required=True, help="ID ресурса")
     parser_update.add_argument("--kind", required=True, help="Тип ресурса")
+    parser_create.add_argument("-o", "--output", required=False, help="Сохранять вывод в файл")
 
     args = parser.parse_args()
 
@@ -330,7 +331,16 @@ def main():
             action_create_resource(kuma_osmp, args.kind, args.tenantID, args.tenantName, args.resource)
     elif args.command == "get_resource":
         print(f"\n[START] Запуск получения ресурса с типом {args.kind}...\n")
-        print(kuma_osmp.get_kind_resources(args.kind, args.id_resource))
+        response = kuma_osmp.get_kind_resources(args.kind, args.id_resource)
+        if args.output:
+        # Сохраняем в файл
+            with open(args.output, "w", encoding="utf-8") as f:
+                f.write(response)
+            print(f"\n[INFO] Результат сохранён в файл: {args.output}")
+        else:
+            # Иначе выводим в консоль
+            print(response) 
+
     else:
         parser.print_help()
 
