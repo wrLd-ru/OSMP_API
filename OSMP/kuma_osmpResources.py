@@ -285,7 +285,7 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
     page = 1
     name = name
     kind_collector = kind
-    id_normalizer = id
+    id_enrichment = id
 
     # ------------------ поиск коллекторов по названию
     print("\n")
@@ -312,24 +312,21 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
             "-----------------------"
         )
 
+    # ----------------- получение и изменение ресурса enrichmentRule
+    def get_enrichmentRule(kind, id):
+        enrichment = kuma_osmp.get_kind_resources(kind, id)
 
-    # ----------------- получение и изменение ресурса нормализатор
-    def get_filtered_normalizer(kind, id):
-        normalizer = kuma_osmp.get_kind_resources(kind, id)
+        modified_enrichment = enrichment.copy()
 
-        modified_normalizer = normalizer.copy()
+        filtered_enrichment = {}
 
-        filtered_normalizer = {}
-
-        filtered_normalizer['normalizer'] = {
-            'id': modified_normalizer.get('payload', {}).get('id', ''),
-            'name': modified_normalizer.get('payload', {}).get('name', ''),
-            'kind': modified_normalizer.get('payload', {}).get('kind', '')
+        filtered_enrichment = {
+            'payload': modified_enrichment.get('payload', {})
         }
-        return filtered_normalizer
+        return filtered_enrichment
 
     # ---------------- получение и изменение ресурса коллектора
-    def get_and_modified_collector(kind_collector, id_collector, id_normalizer):
+    def get_and_modified_collector(kind_collector, id_collector, id_enrichment):
         resource = kuma_osmp.get_kind_resources(kind_collector, id_collector)
 
         modified_data = resource.copy()
@@ -396,25 +393,25 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
 
         filtered_collector['payload']['id'] = ''
         filtered_collector['payload']['name'] = ''
-        filtered_collector['payload']['normalizers'][0] = get_filtered_normalizer('normalizer', id_normalizer)
+        filtered_collector['payload']['enrichment'].append(get_enrichmentRule('enrichmentRule', id_enrichment))
 
         return filtered_collector
 
-    def validate_collectors_with_new_normalizers(collectors_filtered, id_normalizer):
+    def validate_collectors_with_new_enrichment(collectors_filtered, id_enrichment):
         for collector in collectors_filtered:
             current_id = collector["id"]
             current_kind = collector["kind"]
-            collector_new = get_and_modified_collector(current_kind, current_id, id_normalizer)
+            collector_new = get_and_modified_collector(current_kind, current_id, id_enrichment)
             print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
             print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
             answer = kuma_osmp.resources_validate(current_kind, collector_new)
             print(f"Получен ответ: {answer}\n")
 
-    def validate_and_update_collectors_with_new_normalizers(collectors_filtered, id_normalizer):
+    def validate_and_update_collectors_with_new_enrichment(collectors_filtered, id_enrichment):
         for collector in collectors_filtered:
             current_id = collector["id"]
             current_kind = collector["kind"]
-            collector_new = get_and_modified_collector(current_kind, current_id, id_normalizer)
+            collector_new = get_and_modified_collector(current_kind, current_id, id_enrichment)
             print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
             print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
             answer = kuma_osmp.resources_validate(current_kind, collector_new)
@@ -425,13 +422,13 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
                 print(f"Получен ответ: {answer}\n")
 
 
-    new_normalizer = kuma_osmp.get_kind_resources('normalizer', id_normalizer)
+    new_enrichment = kuma_osmp.get_kind_resources('enrichmentRule', id_enrichment)
     print("\n")
-    print(f"[INFO] Валидация нормализатора {new_normalizer['name']} на всех коллекторах...\n")
-    validate_collectors_with_new_normalizers(collectors_filtered, id_normalizer)
+    print(f"[INFO] Валидация обогащения {new_enrichment['name']} на всех коллекторах...\n")
+    validate_collectors_with_new_enrichment(collectors_filtered, id_enrichment)
 
-    print(f"[INFO] Валидация и изменение нормализатора {new_normalizer['name']} на всех коллекторах...\n")
-    validate_and_update_collectors_with_new_normalizers(collectors_filtered, id_normalizer)
+    print(f"[INFO] Валидация и изменение обогащения {new_enrichment['name']} на всех коллекторах...\n")
+    validate_and_update_collectors_with_new_enrichment(collectors_filtered, id_enrichment)
 
 def main():
     parser = argparse.ArgumentParser(description="Скрипт для управления ресурсами kuma_osmp. " \
@@ -459,6 +456,7 @@ def main():
     parser_update.add_argument("--name", required=True, help="Имя коллектора")
     parser_update.add_argument("--kind", required=True, help="Тип ресурса")
     
+    # парсер для добавления правила обогащения
     parser_update = subparsers.add_parser("update_enrichment_on_collector", help="Добавление обогащения на коллекторах по всем тенантам")
     parser_update.add_argument("--id_enrichment", required=True, help="ID нового правила обогащения")
     parser_update.add_argument("--name", required=True, help="Имя коллектора")
