@@ -4,12 +4,10 @@ import argparse
 import sys
 
 def action_update_collectors(kuma_osmp, name, kind, id):
-
     page = 1
     name = name
     kind_collector = kind
     id_normalizer = id
-
 
     # ------------------ поиск коллекторов по названию
     print("\n")
@@ -61,6 +59,7 @@ def action_update_collectors(kuma_osmp, name, kind, id):
         # изменение ресурса коллектора 
         filtered_collector = {
             key: modified_data[key] for key in ['id', 'tenantID', 'kind', 'name', 'description','version']
+
         }
 
         destinations_cleaned = [
@@ -82,6 +81,7 @@ def action_update_collectors(kuma_osmp, name, kind, id):
                         'id': connector.get('id'),
                         'name': connector.get('name'),
                         'kind': connector.get('kind'),
+                        'delimiter': connector.get('delimiter'),
                         'connections': [
                     {
                                     'kind': conn.get('kind'),
@@ -90,19 +90,30 @@ def action_update_collectors(kuma_osmp, name, kind, id):
                     for conn in connector.get('connections', [])
                 ]
         }
-        #print(connector_cleaned)
+       
         normalizers = modified_data.get('payload', {}).get('normalizers', [])
         normalizers_cleaned = [
             {'normalizer': item['normalizer']}
             for item in normalizers
         ]
 
+
         filtered_collector['payload'] = {
             'id': modified_data.get('payload', {}).get('id', ''),
             'name': modified_data.get('payload', {}).get('name', ''),
-            'normalizers': normalizers_cleaned,
             'connector': connector_cleaned,
-            'destinations': destinations_cleaned
+            'normalizers': normalizers_cleaned,
+            'destinations': destinations_cleaned,
+            'filters': modified_data.get('payload', {}).get('filters', ''),
+            'enrichment': modified_data.get('payload', {}).get('enrichment', ''),
+            'rules': modified_data.get('payload', {}).get('rules', ''),
+            'workers': modified_data.get('payload', {}).get('workers', ''),
+            'debug': modified_data.get('payload', {}).get('debug', ''),
+            'shared': modified_data.get('payload', {}).get('shared', ''),
+            'accountsConfig': modified_data.get('payload', {}).get('accountsConfig', ''),
+            'sourceID': modified_data.get('payload', {}).get('sourceID', ''),
+            'eventSourceIdentity': modified_data.get('payload', {}).get('eventSourceIdentity', ''),
+            'banned': modified_data.get('payload', {}).get('banned', ''),
         }
 
         filtered_collector['payload']['id'] = ''
@@ -270,6 +281,158 @@ def action_create_resource(kuma_osmp, kind, tenantID, tenantName, resource):
         answer = kuma_osmp.resources_create(kind, resource)
         print(f"Получен ответ: {answer}\n")
 
+def action_update_enrichment(kuma_osmp, name, kind, id):
+    page = 1
+    name = name
+    kind_collector = kind
+    id_normalizer = id
+
+    # ------------------ поиск коллекторов по названию
+    print("\n")
+    print(f"[INFO] Запуск поиска ресурсов с типом {kind_collector} по названию {name}...\n")
+    collectors_list = kuma_osmp.resources_search(page=page, name=name, kind=kind_collector)
+    #print(collectors_list)
+
+    collectors_filtered = [
+        {
+            'id': collector['id'],
+            'kind': collector['kind'],
+            'name': collector['name'],
+            'tenantID': collector['tenantID'],
+        }
+        for collector in collectors_list
+    ]
+    print("Найденные ресурсы:\n")
+    for collector in collectors_filtered:
+        print(
+            f"ID: {collector['id']}\n"
+            f"Type: {collector['kind']}\n"
+            f"Name: {collector['name']}\n"
+            f"Tenant: {collector['tenantID']}\n"
+            "-----------------------"
+        )
+
+
+    # ----------------- получение и изменение ресурса нормализатор
+    def get_filtered_normalizer(kind, id):
+        normalizer = kuma_osmp.get_kind_resources(kind, id)
+
+        modified_normalizer = normalizer.copy()
+
+        filtered_normalizer = {}
+
+        filtered_normalizer['normalizer'] = {
+            'id': modified_normalizer.get('payload', {}).get('id', ''),
+            'name': modified_normalizer.get('payload', {}).get('name', ''),
+            'kind': modified_normalizer.get('payload', {}).get('kind', '')
+        }
+        return filtered_normalizer
+
+    # ---------------- получение и изменение ресурса коллектора
+    def get_and_modified_collector(kind_collector, id_collector, id_normalizer):
+        resource = kuma_osmp.get_kind_resources(kind_collector, id_collector)
+
+        modified_data = resource.copy()
+
+        # изменение ресурса коллектора 
+        filtered_collector = {
+            key: modified_data[key] for key in ['id', 'tenantID', 'kind', 'name', 'description','version']
+
+        }
+
+        destinations_cleaned = [
+            {
+                'id': d['id'],
+                'name': d['name'],
+                'kind': d['kind'],
+                'connection': {
+                    'kind': d['connection'].get('kind'),
+                    'urls': d['connection'].get('urls', [])
+                }
+            }
+            for d in modified_data.get('payload', {}).get('destinations', [])
+        ]
+
+
+        connector = modified_data.get('payload', {}).get('connector', {})
+        connector_cleaned = {
+                        'id': connector.get('id'),
+                        'name': connector.get('name'),
+                        'kind': connector.get('kind'),
+                        'delimiter': connector.get('delimiter'),
+                        'connections': [
+                    {
+                                    'kind': conn.get('kind'),
+                                    'urls': conn.get('urls', [])
+                            }
+                    for conn in connector.get('connections', [])
+                ]
+        }
+       
+        normalizers = modified_data.get('payload', {}).get('normalizers', [])
+        normalizers_cleaned = [
+            {'normalizer': item['normalizer']}
+            for item in normalizers
+        ]
+
+
+        filtered_collector['payload'] = {
+            'id': modified_data.get('payload', {}).get('id', ''),
+            'name': modified_data.get('payload', {}).get('name', ''),
+            'connector': connector_cleaned,
+            'normalizers': normalizers_cleaned,
+            'destinations': destinations_cleaned,
+            'filters': modified_data.get('payload', {}).get('filters', ''),
+            'enrichment': modified_data.get('payload', {}).get('enrichment', ''),
+            'rules': modified_data.get('payload', {}).get('rules', ''),
+            'workers': modified_data.get('payload', {}).get('workers', ''),
+            'debug': modified_data.get('payload', {}).get('debug', ''),
+            'shared': modified_data.get('payload', {}).get('shared', ''),
+            'accountsConfig': modified_data.get('payload', {}).get('accountsConfig', ''),
+            'sourceID': modified_data.get('payload', {}).get('sourceID', ''),
+            'eventSourceIdentity': modified_data.get('payload', {}).get('eventSourceIdentity', ''),
+            'banned': modified_data.get('payload', {}).get('banned', ''),
+        }
+
+        filtered_collector['payload']['id'] = ''
+        filtered_collector['payload']['name'] = ''
+        filtered_collector['payload']['normalizers'][0] = get_filtered_normalizer('normalizer', id_normalizer)
+
+        return filtered_collector
+
+    def validate_collectors_with_new_normalizers(collectors_filtered, id_normalizer):
+        for collector in collectors_filtered:
+            current_id = collector["id"]
+            current_kind = collector["kind"]
+            collector_new = get_and_modified_collector(current_kind, current_id, id_normalizer)
+            print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
+            print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
+            answer = kuma_osmp.resources_validate(current_kind, collector_new)
+            print(f"Получен ответ: {answer}\n")
+
+    def validate_and_update_collectors_with_new_normalizers(collectors_filtered, id_normalizer):
+        for collector in collectors_filtered:
+            current_id = collector["id"]
+            current_kind = collector["kind"]
+            collector_new = get_and_modified_collector(current_kind, current_id, id_normalizer)
+            print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
+            print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
+            answer = kuma_osmp.resources_validate(current_kind, collector_new)
+            print(f"Получен ответ: {answer}\n")
+            if answer == '[Status 204: OK] Resource is valid!':
+                print(f"[INFO] Запуск обновления ресурса {collector_new['name']}...")
+                answer = kuma_osmp.put_kind_resources(current_kind, current_id, collector_new)
+                print(f"Получен ответ: {answer}\n")
+
+
+    new_normalizer = kuma_osmp.get_kind_resources('normalizer', id_normalizer)
+    print("\n")
+    print(f"[INFO] Валидация нормализатора {new_normalizer['name']} на всех коллекторах...\n")
+    validate_collectors_with_new_normalizers(collectors_filtered, id_normalizer)
+
+    print(f"[INFO] Валидация и изменение нормализатора {new_normalizer['name']} на всех коллекторах...\n")
+    validate_and_update_collectors_with_new_normalizers(collectors_filtered, id_normalizer)
+
 def main():
     parser = argparse.ArgumentParser(description="Скрипт для управления ресурсами kuma_osmp. " \
     "Перед началом использования необходимо ввести в секцию Main в переменную kuma_osmp адрес Ядра и API токен!")
@@ -295,26 +458,34 @@ def main():
     parser_update.add_argument("--id_normalizer", required=True, help="ID нового нормализатора")
     parser_update.add_argument("--name", required=True, help="Имя коллектора")
     parser_update.add_argument("--kind", required=True, help="Тип ресурса")
+    
+    parser_update = subparsers.add_parser("update_enrichment_on_collector", help="Добавление обогащения на коллекторах по всем тенантам")
+    parser_update.add_argument("--id_enrichment", required=True, help="ID нового правила обогащения")
+    parser_update.add_argument("--name", required=True, help="Имя коллектора")
+    parser_update.add_argument("--kind", required=True, help="Тип ресурса")
 
     # Парсер для получения ресурса
-    parser_update = subparsers.add_parser("get_resource", help="Получение ресурса")
-    parser_update.add_argument("--id_resource", required=True, help="ID ресурса")
-    parser_update.add_argument("--kind", required=True, help="Тип ресурса")
-    parser_create.add_argument("-o", "--output", required=False, help="Сохранять вывод в файл")
+    parser_get = subparsers.add_parser("get_resource", help="Получение ресурса")
+    parser_get.add_argument("--id_resource", required=True, help="ID ресурса")
+    parser_get.add_argument("--kind", required=True, help="Тип ресурса")
+    parser_get.add_argument("-o", "--output", required=False, help="Сохранять вывод в файл")
 
     args = parser.parse_args()
 
     # Здесь необходимо ввести корректные данные ! Для KUMA в XDR OSMP
     kuma_osmp = Kuma(xdrdomain='xdr.soc-lab.local', token='')
- 
+
 
     # Выбираем действие на основе переданной команды
     if args.command == "create_collectors":
         print(f"\n[START] Запуск массового создания коллекторов по всем тенантам по примеру...\n")
         action_create_collectors(kuma_osmp, args.id, args.kind, args.name)
     elif args.command == "update_collectors":
-        print(f"\n[START] Запуск обновления коллекторов...\n")
+        print(f"\n[START] Запуск обновления нормализатора на коллекторах...\n")
         action_update_collectors(kuma_osmp, args.name, args.kind, args.id_normalizer)
+    elif args.command == "update_enrichment_on_collector":
+        print(f"\n[START] Запуск добавления обогащения на коллекторах...\n")
+        action_update_enrichment(kuma_osmp, args.name, args.kind, args.id_enrichment)
     elif args.command == "create_resource":
         if args.resource.startswith('@'):
             file_path = args.resource[1:]
@@ -332,18 +503,17 @@ def main():
     elif args.command == "get_resource":
         print(f"\n[START] Запуск получения ресурса с типом {args.kind}...\n")
         response = kuma_osmp.get_kind_resources(args.kind, args.id_resource)
+        json_str = json.dumps(response, indent=4, ensure_ascii=False)
         if args.output:
         # Сохраняем в файл
             with open(args.output, "w", encoding="utf-8") as f:
-                f.write(response)
+                f.write(json_str)
             print(f"\n[INFO] Результат сохранён в файл: {args.output}")
         else:
             # Иначе выводим в консоль
-            print(response) 
-
+            print(response)
     else:
         parser.print_help()
-
 
 if __name__ == "__main__":
     main()
