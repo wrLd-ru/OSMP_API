@@ -318,11 +318,8 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
 
         modified_enrichment = enrichment.copy()
 
-        filtered_enrichment = {}
+        filtered_enrichment = modified_enrichment.get('payload', {})
 
-        filtered_enrichment = {
-            'payload': modified_enrichment.get('payload', {})
-        }
         return filtered_enrichment
 
     # ---------------- получение и изменение ресурса коллектора
@@ -402,6 +399,9 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
             current_id = collector["id"]
             current_kind = collector["kind"]
             collector_new = get_and_modified_collector(current_kind, current_id, id_enrichment)
+            # json_str = json.dumps(collector_new, indent=4, ensure_ascii=False)
+            # with open('test.txt', "w", encoding="utf-8") as f:
+            #     f.write(json_str)
             print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
             print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
             answer = kuma_osmp.resources_validate(current_kind, collector_new)
@@ -430,6 +430,149 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
     print(f"[INFO] Валидация и изменение обогащения {new_enrichment['name']} на всех коллекторах...\n")
     validate_and_update_collectors_with_new_enrichment(collectors_filtered, id_enrichment)
 
+def action_delete_enrichment(kuma_osmp, name, kind, id):
+    page = 1
+    name = name
+    kind_collector = kind
+    id_enrichment = id
+
+    # ------------------ поиск коллекторов по названию
+    print("\n")
+    print(f"[INFO] Запуск поиска ресурсов с типом {kind_collector} по названию {name}...\n")
+    collectors_list = kuma_osmp.resources_search(page=page, name=name, kind=kind_collector)
+    #print(collectors_list)
+
+    collectors_filtered = [
+        {
+            'id': collector['id'],
+            'kind': collector['kind'],
+            'name': collector['name'],
+            'tenantID': collector['tenantID'],
+        }
+        for collector in collectors_list
+    ]
+    print("Найденные ресурсы:\n")
+    for collector in collectors_filtered:
+        print(
+            f"ID: {collector['id']}\n"
+            f"Type: {collector['kind']}\n"
+            f"Name: {collector['name']}\n"
+            f"Tenant: {collector['tenantID']}\n"
+            "-----------------------"
+        )
+
+    # ---------------- получение и изменение ресурса коллектора
+    def get_and_modified_collector(kind_collector, id_collector, id_enrichment):
+        resource = kuma_osmp.get_kind_resources(kind_collector, id_collector)
+
+        modified_data = resource.copy()
+
+        # изменение ресурса коллектора 
+        filtered_collector = {
+            key: modified_data[key] for key in ['id', 'tenantID', 'kind', 'name', 'description','version']
+
+        }
+
+        destinations_cleaned = [
+            {
+                'id': d['id'],
+                'name': d['name'],
+                'kind': d['kind'],
+                'connection': {
+                    'kind': d['connection'].get('kind'),
+                    'urls': d['connection'].get('urls', [])
+                }
+            }
+            for d in modified_data.get('payload', {}).get('destinations', [])
+        ]
+
+
+        connector = modified_data.get('payload', {}).get('connector', {})
+        connector_cleaned = {
+                        'id': connector.get('id'),
+                        'name': connector.get('name'),
+                        'kind': connector.get('kind'),
+                        'delimiter': connector.get('delimiter'),
+                        'connections': [
+                    {
+                                    'kind': conn.get('kind'),
+                                    'urls': conn.get('urls', [])
+                            }
+                    for conn in connector.get('connections', [])
+                ]
+        }
+       
+        normalizers = modified_data.get('payload', {}).get('normalizers', [])
+        normalizers_cleaned = [
+            {'normalizer': item['normalizer']}
+            for item in normalizers
+        ]
+
+
+        filtered_collector['payload'] = {
+            'id': modified_data.get('payload', {}).get('id', ''),
+            'name': modified_data.get('payload', {}).get('name', ''),
+            'connector': connector_cleaned,
+            'normalizers': normalizers_cleaned,
+            'destinations': destinations_cleaned,
+            'filters': modified_data.get('payload', {}).get('filters', ''),
+            'enrichment': modified_data.get('payload', {}).get('enrichment', ''),
+            'rules': modified_data.get('payload', {}).get('rules', ''),
+            'workers': modified_data.get('payload', {}).get('workers', ''),
+            'debug': modified_data.get('payload', {}).get('debug', ''),
+            'shared': modified_data.get('payload', {}).get('shared', ''),
+            'accountsConfig': modified_data.get('payload', {}).get('accountsConfig', ''),
+            'sourceID': modified_data.get('payload', {}).get('sourceID', ''),
+            'eventSourceIdentity': modified_data.get('payload', {}).get('eventSourceIdentity', ''),
+            'banned': modified_data.get('payload', {}).get('banned', ''),
+        }
+
+        filtered_collector['payload']['id'] = ''
+        filtered_collector['payload']['name'] = ''
+
+        filtered_collector['payload']['enrichment'] = [
+            item for item in filtered_collector['payload']['enrichment']
+            if item.get('id') != id_enrichment
+        ]
+        #filtered_collector['payload']['enrichment'].append(get_enrichmentRule('enrichmentRule', id_enrichment))
+
+        return filtered_collector
+
+    def validate_collectors_with_new_resource(collectors_filtered, id_resource):
+        for collector in collectors_filtered:
+            current_id = collector["id"]
+            current_kind = collector["kind"]
+            collector_new = get_and_modified_collector(current_kind, current_id, id_resource)
+            # json_str = json.dumps(collector_new, indent=4, ensure_ascii=False)
+            # with open('test.txt', "w", encoding="utf-8") as f:
+            #     f.write(json_str)
+            print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
+            print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
+            answer = kuma_osmp.resources_validate(current_kind, collector_new)
+            print(f"Получен ответ: {answer}\n")
+
+    def validate_and_update_collectors_with_new_resource(collectors_filtered, id_resource):
+        for collector in collectors_filtered:
+            current_id = collector["id"]
+            current_kind = collector["kind"]
+            collector_new = get_and_modified_collector(current_kind, current_id, id_resource)
+            print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
+            print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
+            answer = kuma_osmp.resources_validate(current_kind, collector_new)
+            print(f"Получен ответ: {answer}\n")
+            if answer == '[Status 204: OK] Resource is valid!':
+                print(f"[INFO] Запуск обновления ресурса {collector_new['name']}...")
+                answer = kuma_osmp.put_kind_resources(current_kind, current_id, collector_new)
+                print(f"Получен ответ: {answer}\n")
+
+    del_enrichment = kuma_osmp.get_kind_resources('enrichmentRule', id_enrichment)
+    print("\n")
+    print(f"[INFO] Валидация удаления правила обогащения {del_enrichment['name']} на всех коллекторах...\n")
+    validate_collectors_with_new_resource(collectors_filtered, id_enrichment)
+
+    print(f"[INFO] Валидация и удаление правила обогащения {del_enrichment['name']} на всех коллекторах...\n")
+    validate_and_update_collectors_with_new_resource(collectors_filtered, id_enrichment)
+
 def main():
     parser = argparse.ArgumentParser(description="Скрипт для управления ресурсами kuma_osmp. " \
     "Перед началом использования необходимо ввести в секцию Main в переменную kuma_osmp адрес Ядра и API токен!")
@@ -456,11 +599,17 @@ def main():
     parser_update.add_argument("--name", required=True, help="Имя коллектора")
     parser_update.add_argument("--kind", required=True, help="Тип ресурса")
     
-    # парсер для добавления правила обогащения
+    # Парсер для добавления правила обогащения
     parser_update = subparsers.add_parser("update_enrichment_on_collector", help="Добавление обогащения на коллекторах по всем тенантам")
     parser_update.add_argument("--id_enrichment", required=True, help="ID нового правила обогащения")
     parser_update.add_argument("--name", required=True, help="Имя коллектора")
-    parser_update.add_argument("--kind", required=True, help="Тип ресурса")
+    parser_update.add_argument("--kind", required=True, help="Тип ресурса. В данной функции --kind collector")
+
+    # Парсер для добавления правила обогащения
+    parser_update = subparsers.add_parser("delete_enrichment_on_collector", help="Удаление обогащения на коллекторах по всем тенантам")
+    parser_update.add_argument("--id_enrichment", required=True, help="ID правила обогащения, которое необходимо отвязать от коллектора")
+    parser_update.add_argument("--name", required=True, help="Имя коллектора")
+    parser_update.add_argument("--kind", required=True, help="Тип ресурса. В данной функции --kind collector")
 
     # Парсер для получения ресурса
     parser_get = subparsers.add_parser("get_resource", help="Получение ресурса")
@@ -484,6 +633,9 @@ def main():
     elif args.command == "update_enrichment_on_collector":
         print(f"\n[START] Запуск добавления обогащения на коллекторах...\n")
         action_update_enrichment(kuma_osmp, args.name, args.kind, args.id_enrichment)
+    elif args.command == "delete_enrichment_on_collector":
+        print(f"\n[START] Запуск удаления правила обогащения на коллекторах...\n")
+        action_delete_enrichment(kuma_osmp, args.name, args.kind, args.id_enrichment)
     elif args.command == "create_resource":
         if args.resource.startswith('@'):
             file_path = args.resource[1:]
