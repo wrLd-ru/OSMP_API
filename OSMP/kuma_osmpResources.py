@@ -57,9 +57,18 @@ def action_update_collectors(kuma_osmp, name, kind, id):
         modified_data = resource.copy()
 
         # изменение ресурса коллектора 
-        filtered_collector = {
-            key: modified_data[key] for key in ['id', 'tenantID', 'kind', 'name', 'description','version']
+        # filtered_collector = {
+        #     key: modified_data[key] for key in ['id', 'tenantID', 'kind', 'name', 'description', 'version']
 
+        # }
+
+        filtered_collector = {
+            'id': modified_data.get('id',''),
+            'tenantID': modified_data.get('tenantID',''),
+            'kind': modified_data.get('kind',''),
+            'name': modified_data.get('name',''),
+            'description': modified_data.get('description',''),
+            'version': modified_data.get('version','')
         }
 
         destinations_cleaned = [
@@ -97,6 +106,14 @@ def action_update_collectors(kuma_osmp, name, kind, id):
             for item in normalizers
         ]
 
+        enrichment = modified_data.get('payload', {}).get('enrichment', [])
+        for item in enrichment:
+            filter_dict = item.get('filter')
+            if filter_dict is not None:
+            # Проверяем, что у Правила обогащения в поле filter пустые id и name
+                if filter_dict.get('id', '') == '' and filter_dict.get('name', '') == '':
+            # Удаляем ключ 'filter' из элемента
+                    item.pop('filter')     
 
         filtered_collector['payload'] = {
             'id': modified_data.get('payload', {}).get('id', ''),
@@ -105,7 +122,7 @@ def action_update_collectors(kuma_osmp, name, kind, id):
             'normalizers': normalizers_cleaned,
             'destinations': destinations_cleaned,
             'filters': modified_data.get('payload', {}).get('filters', ''),
-            'enrichment': modified_data.get('payload', {}).get('enrichment', ''),
+            'enrichment': enrichment,
             'rules': modified_data.get('payload', {}).get('rules', ''),
             'workers': modified_data.get('payload', {}).get('workers', ''),
             'debug': modified_data.get('payload', {}).get('debug', ''),
@@ -122,38 +139,43 @@ def action_update_collectors(kuma_osmp, name, kind, id):
 
         return filtered_collector
 
-    def validate_collectors_with_new_normalizers(collectors_filtered, id_normalizer):
+    def validate_collectors_with_new_normalizers(collectors_filtered, id_normalizer, excluded_tenant_ids):
         for collector in collectors_filtered:
-            current_id = collector["id"]
-            current_kind = collector["kind"]
-            collector_new = get_and_modified_collector(current_kind, current_id, id_normalizer)
-            print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
-            print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
-            answer = kuma_osmp.resources_validate(current_kind, collector_new)
-            print(f"Получен ответ: {answer}\n")
-
-    def validate_and_update_collectors_with_new_normalizers(collectors_filtered, id_normalizer):
-        for collector in collectors_filtered:
-            current_id = collector["id"]
-            current_kind = collector["kind"]
-            collector_new = get_and_modified_collector(current_kind, current_id, id_normalizer)
-            print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
-            print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
-            answer = kuma_osmp.resources_validate(current_kind, collector_new)
-            print(f"Получен ответ: {answer}\n")
-            if answer == '[Status 204: OK] Resource is valid!':
-                print(f"[INFO] Запуск обновления ресурса {collector_new['name']}...")
-                answer = kuma_osmp.put_kind_resources(current_kind, current_id, collector_new)
+            if collector['tenantID'] not in excluded_tenant_ids:
+                current_id = collector["id"]
+                current_kind = collector["kind"]
+                collector_new = get_and_modified_collector(current_kind, current_id, id_normalizer)
+                #json_str = json.dumps(collector_new, indent=4, ensure_ascii=False)
+                #with open('test.txt', "w", encoding="utf-8") as f:
+                #    f.write(json_str)
+                print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
+                print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
+                answer = kuma_osmp.resources_validate(current_kind, collector_new)
                 print(f"Получен ответ: {answer}\n")
 
+    def validate_and_update_collectors_with_new_normalizers(collectors_filtered, id_normalizer, excluded_tenant_ids):
+        for collector in collectors_filtered:
+            if collector['tenantID'] not in excluded_tenant_ids:
+                current_id = collector["id"]
+                current_kind = collector["kind"]
+                collector_new = get_and_modified_collector(current_kind, current_id, id_normalizer)
+                print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
+                print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
+                answer = kuma_osmp.resources_validate(current_kind, collector_new)
+                print(f"Получен ответ: {answer}\n")
+                if answer == '[Status 204: OK] Resource is valid!':
+                    print(f"[INFO] Запуск обновления ресурса {collector_new['name']}...")
+                    answer = kuma_osmp.put_kind_resources(current_kind, current_id, collector_new)
+                    print(f"Получен ответ: {answer}\n")
 
+    excluded_tenant_ids = ['5d84b79c-b490-4acd-8f5b-ea6244254f28', 'f8a3b634-8a92-4cb0-93ce-819940ff6e2f']
     new_normalizer = kuma_osmp.get_kind_resources('normalizer', id_normalizer)
     print("\n")
     print(f"[INFO] Валидация нормализатора {new_normalizer['name']} на всех коллекторах...\n")
-    validate_collectors_with_new_normalizers(collectors_filtered, id_normalizer)
+    validate_collectors_with_new_normalizers(collectors_filtered, id_normalizer, excluded_tenant_ids)
 
     print(f"[INFO] Валидация и изменение нормализатора {new_normalizer['name']} на всех коллекторах...\n")
-    validate_and_update_collectors_with_new_normalizers(collectors_filtered, id_normalizer)
+    validate_and_update_collectors_with_new_normalizers(collectors_filtered, id_normalizer, excluded_tenant_ids)
 
 def action_create_collectors(kuma_osmp, id, kind, name):
     def get_filtered_normalizer(kind, id):
@@ -369,6 +391,14 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
             for item in normalizers
         ]
 
+        enrichment = modified_data.get('payload', {}).get('enrichment', [])
+        for item in enrichment:
+            filter_dict = item.get('filter')
+            if filter_dict is not None:
+            # Проверяем, что у Правила обогащения в поле filter пустые id и name
+                if filter_dict.get('id', '') == '' and filter_dict.get('name', '') == '':
+            # Удаляем ключ 'filter' из элемента
+                    item.pop('filter')  
 
         filtered_collector['payload'] = {
             'id': modified_data.get('payload', {}).get('id', ''),
@@ -377,7 +407,7 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
             'normalizers': normalizers_cleaned,
             'destinations': destinations_cleaned,
             'filters': modified_data.get('payload', {}).get('filters', ''),
-            'enrichment': modified_data.get('payload', {}).get('enrichment', ''),
+            'enrichment': enrichment,
             'rules': modified_data.get('payload', {}).get('rules', ''),
             'workers': modified_data.get('payload', {}).get('workers', ''),
             'debug': modified_data.get('payload', {}).get('debug', ''),
