@@ -303,11 +303,12 @@ def action_create_resource(kuma_osmp, kind, tenantID, tenantName, resource):
         answer = kuma_osmp.resources_create(kind, resource)
         print(f"Получен ответ: {answer}\n")
 
-def action_update_enrichment(kuma_osmp, name, kind, id):
+def action_update_new_resource(kuma_osmp, name, kind, id): 
     page = 1
     name = name
-    kind_collector = kind
-    id_enrichment = id
+    kind_collector = 'collector'
+    kind_new_rule = kind
+    id_new_rule = id
 
     # ------------------ поиск коллекторов по названию
     print("\n")
@@ -331,21 +332,21 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
             f"Type: {collector['kind']}\n"
             f"Name: {collector['name']}\n"
             f"Tenant: {collector['tenantID']}\n"
-            "-----------------------"
+            "----------------------------------"
         )
 
-    # ----------------- получение и изменение ресурса enrichmentRule
-    def get_enrichmentRule(kind, id):
-        enrichment = kuma_osmp.get_kind_resources(kind, id)
+    # ----------------- получение и изменение ресурса enrichmentRule или filter
+    def get_new_rule(kind, id):
+        rule = kuma_osmp.get_kind_resources(kind, id)
 
-        modified_enrichment = enrichment.copy()
+        modified_rule = rule.copy()
 
-        filtered_enrichment = modified_enrichment.get('payload', {})
+        filtered_rule = modified_rule.get('payload', {})
 
-        return filtered_enrichment
+        return filtered_rule
 
     # ---------------- получение и изменение ресурса коллектора
-    def get_and_modified_collector(kind_collector, id_collector, id_enrichment):
+    def get_and_modified_collector(kind_collector, id_collector, id_new_rule):
         resource = kuma_osmp.get_kind_resources(kind_collector, id_collector)
 
         modified_data = resource.copy()
@@ -390,6 +391,11 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
             {'normalizer': item['normalizer']}
             for item in normalizers
         ]
+        
+        normalizer = normalizers_cleaned[0]['normalizer'] 
+        filtered_normalizer = {k: normalizer[k] for k in ("id", "name", "kind") if k in normalizer}
+        normalizers_cleaned[0]['normalizer'] = filtered_normalizer
+        
 
         enrichment = modified_data.get('payload', {}).get('enrichment', [])
         for item in enrichment:
@@ -420,29 +426,35 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
 
         filtered_collector['payload']['id'] = ''
         filtered_collector['payload']['name'] = ''
-        filtered_collector['payload']['enrichment'].append(get_enrichmentRule('enrichmentRule', id_enrichment))
+
+        if kind_new_rule == 'enrichmentRule':
+            filtered_collector['payload']['enrichment'].append(get_new_rule('enrichmentRule', id_new_rule))
+        elif kind_new_rule == 'filter':
+            filtered_collector['payload']['filters'].append(get_new_rule('filter', id_new_rule))
+        else: 
+            print('Ошибка. Неподдерживаемый тип')
 
         return filtered_collector
 
-    def validate_collectors_with_new_enrichment(collectors_filtered, id_enrichment):
+    def validate_collectors_with_new_enrichment(collectors_filtered, id_new_rule):
         for collector in collectors_filtered:
             current_id = collector["id"]
             current_kind = collector["kind"]
-            collector_new = get_and_modified_collector(current_kind, current_id, id_enrichment)
+            collector_new = get_and_modified_collector(current_kind, current_id, id_new_rule)
             # json_str = json.dumps(collector_new, indent=4, ensure_ascii=False)
             # with open('test.txt', "w", encoding="utf-8") as f:
             #     f.write(json_str)
-            print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
+            print(f"[INFO] Коллектору {collector_new['name']} добавлено новое правило!")
             print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
             answer = kuma_osmp.resources_validate(current_kind, collector_new)
             print(f"Получен ответ: {answer}\n")
 
-    def validate_and_update_collectors_with_new_enrichment(collectors_filtered, id_enrichment):
+    def validate_and_update_collectors_with_new_enrichment(collectors_filtered, id_new_rule):
         for collector in collectors_filtered:
             current_id = collector["id"]
             current_kind = collector["kind"]
-            collector_new = get_and_modified_collector(current_kind, current_id, id_enrichment)
-            print(f"[INFO] Коллектору {collector_new['name']} изменен нормализатор!")
+            collector_new = get_and_modified_collector(current_kind, current_id, id_new_rule)
+            print(f"[INFO] Коллектору {collector_new['name']} добавлено новое правило!")
             print(f"[INFO] Запуск валидации ресурса {collector_new['name']}...")
             answer = kuma_osmp.resources_validate(current_kind, collector_new)
             print(f"Получен ответ: {answer}\n")
@@ -452,13 +464,13 @@ def action_update_enrichment(kuma_osmp, name, kind, id):
                 print(f"Получен ответ: {answer}\n")
 
 
-    new_enrichment = kuma_osmp.get_kind_resources('enrichmentRule', id_enrichment)
+    new_rule = kuma_osmp.get_kind_resources(kind_new_rule, id_new_rule)
     print("\n")
-    print(f"[INFO] Валидация обогащения {new_enrichment['name']} на всех коллекторах...\n")
-    validate_collectors_with_new_enrichment(collectors_filtered, id_enrichment)
+    print(f"[INFO] Валидация нового ресурса {new_rule['name']} на всех коллекторах...\n")
+    validate_collectors_with_new_enrichment(collectors_filtered, id_new_rule)
 
-    print(f"[INFO] Валидация и изменение обогащения {new_enrichment['name']} на всех коллекторах...\n")
-    validate_and_update_collectors_with_new_enrichment(collectors_filtered, id_enrichment)
+    print(f"[INFO] Валидация и добавления нового ресурса {new_rule['name']} на всех коллекторах...\n")
+    validate_and_update_collectors_with_new_enrichment(collectors_filtered, id_new_rule)
 
 def action_delete_enrichment(kuma_osmp, name, kind, id):
     page = 1
@@ -629,11 +641,12 @@ def main():
     parser_update.add_argument("--name", required=True, help="Имя коллектора")
     parser_update.add_argument("--kind", required=True, help="Тип ресурса")
     
-    # Парсер для добавления правила обогащения
-    parser_update = subparsers.add_parser("update_enrichment_on_collector", help="Добавление обогащения на коллекторах по всем тенантам")
-    parser_update.add_argument("--id_enrichment", required=True, help="ID нового правила обогащения")
+    # Парсер для добавления правила обогащения или фильтра
+    parser_update = subparsers.add_parser("update_resource_on_collector", help="Добавление обогащения на коллекторах по всем тенантам")
+    parser_update.add_argument("--id_new", required=True, help="ID нового правила обогащения или фильтра")
+    parser_update.add_argument("--kind", required=True, help="Тип добавляемого ресурса. В данной функции допустимые значения --kind filter и enrichmentRule")
     parser_update.add_argument("--name", required=True, help="Имя коллектора")
-    parser_update.add_argument("--kind", required=True, help="Тип ресурса. В данной функции --kind collector")
+    
 
     # Парсер для добавления правила обогащения
     parser_update = subparsers.add_parser("delete_enrichment_on_collector", help="Удаление обогащения на коллекторах по всем тенантам")
@@ -660,9 +673,9 @@ def main():
     elif args.command == "update_collectors":
         print(f"\n[START] Запуск обновления нормализатора на коллекторах...\n")
         action_update_collectors(kuma_osmp, args.name, args.kind, args.id_normalizer)
-    elif args.command == "update_enrichment_on_collector":
-        print(f"\n[START] Запуск добавления обогащения на коллекторах...\n")
-        action_update_enrichment(kuma_osmp, args.name, args.kind, args.id_enrichment)
+    elif args.command == "update_resource_on_collector":
+        print(f"\n[START] Запуск добавления обогащения или фильтра на коллекторах...\n")
+        action_update_new_resource(kuma_osmp, args.name, args.kind, args.id_new)
     elif args.command == "delete_enrichment_on_collector":
         print(f"\n[START] Запуск удаления правила обогащения на коллекторах...\n")
         action_delete_enrichment(kuma_osmp, args.name, args.kind, args.id_enrichment)
