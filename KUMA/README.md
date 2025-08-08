@@ -1,8 +1,8 @@
-Библиотека для работы API KUMA: kuma_osmpPublicApiV3.py
+# Библиотека для работы API KUMA: kuma_osmpPublicApiV3.py
 
-Описание: https://support.kaspersky.com/help/XDR/1.3/common/KUMA_RestAPI/dist/index.html?urls.primaryName=KUMA
+## Описание: https://support.kaspersky.com/help/XDR/1.3/common/KUMA_RestAPI/dist/index.html?urls.primaryName=KUMA
 
-Функции:
+### Функции:
 positional arguments: {create_collectors,create_resource,update_collectors,update_enrichment_on_collector,delete_enrichment_on_collector get_resource}
                         Доступные команды
     create_collectors                   Массовое создание коллекторов по всем тенантам
@@ -15,7 +15,7 @@ positional arguments: {create_collectors,create_resource,update_collectors,updat
 options:
   -h, --help            show this help message and exit
 
-Запуск на Windows:
+### Запуск на Windows:
 
 Изменение нормализатора на коллекторах (поиск коллектора по имени регуляркой):
 ```
